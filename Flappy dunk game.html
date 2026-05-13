@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flappy Dunk Clone</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            font-family: 'Arial Black', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            background-color: #70c5ce; /* Classic sky blue */
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            color: white;
+            text-align: center;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .score { font-size: 48px; top: 20px; }
+        .hint { bottom: 20px; font-size: 18px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="score" id="scoreVal">0</div>
+        <div class="hint">CLICK or SPACE to FLAP</div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('scoreVal');
+
+    // Canvas size
+    canvas.width = 400;
+    canvas.height = 600;
+
+    // Game Constants
+    const gravity = 0.25;
+    const flapStrength = -6;
+    const hoopSpeed = 2.5;
+
+    // Game Variables
+    let ball = { x: 50, y: 300, v: 0, radius: 15 };
+    let hoops = [];
+    let score = 0;
+    let gameActive = true;
+    let frameCount = 0;
+
+    function createHoop() {
+        const gapY = Math.random() * (canvas.height - 200) + 100;
+        hoops.push({
+            x: canvas.width + 50,
+            y: gapY,
+            width: 60,
+            passed: false
+        });
+    }
+
+    function resetGame() {
+        ball = { x: 50, y: 300, v: 0, radius: 15 };
+        hoops = [];
+        score = 0;
+        scoreElement.innerText = score;
+        gameActive = true;
+        frameCount = 0;
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff6600"; // Basketball orange
+        ctx.fill();
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.closePath();
+    }
+
+    function drawHoops() {
+        hoops.forEach(hoop => {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            // Top rim
+            ctx.fillRect(hoop.x, hoop.y - 40, hoop.width, 10);
+            // Bottom rim
+            ctx.fillRect(hoop.x, hoop.y + 40, hoop.width, 10);
+            
+            // The "Net"
+            ctx.strokeStyle = "white";
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(hoop.x + 5, hoop.y - 30, hoop.width - 10, 70);
+            ctx.setLineDash([]);
+        });
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        // Ball physics
+        ball.v += gravity;
+        ball.y += ball.v;
+
+        // Ground/Ceiling collision
+        if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+            gameActive = false;
+        }
+
+        // Hoop logic
+        if (frameCount % 100 === 0) createHoop();
+
+        hoops.forEach((hoop, index) => {
+            hoop.x -= hoopSpeed;
+
+            // Collision Check (Score)
+            if (!hoop.passed && ball.x > hoop.x + hoop.width/2) {
+                // If ball is within the vertical gap of the hoop
+                if (ball.y > hoop.y - 40 && ball.y < hoop.y + 40) {
+                    score++;
+                    scoreElement.innerText = score;
+                    hoop.passed = true;
+                } else {
+                    gameActive = false; // Hit the rim
+                }
+            }
+
+            // Remove old hoops
+            if (hoop.x < -100) hoops.splice(index, 1);
+        });
+
+        frameCount++;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw decorative clouds/background stuff
+        ctx.fillStyle = "white";
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        ctx.globalAlpha = 1.0;
+
+        drawHoops();
+        drawBall();
+
+        if (!gameActive) {
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.font = "30px Arial Black";
+            ctx.fillText("GAME OVER", canvas.width/2 - 90, canvas.height/2);
+            ctx.font = "20px Arial";
+            ctx.fillText("Click to Restart", canvas.width/2 - 65, canvas.height/2 + 40);
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    // Input Handling
+    function handleAction() {
+        if (gameActive) {
+            ball.v = flapStrength;
+        } else {
+            resetGame();
+        }
+    }
+
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space') handleAction(); });
+    canvas.addEventListener('mousedown', handleAction);
+
+    loop();
+</script>
+</body>
+</html>
